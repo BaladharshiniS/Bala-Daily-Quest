@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Bala's Daily Quest</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F1EEFB;
+    --card: #FFFFFF;
+    --text: #362B4A;
+    --text-soft: #8A80A3;
+    --accent: #FF6F91;
+    --accent-dark: #E85A7C;
+    --flame: #FFB020;
+    --success: #06C08A;
+    --success-soft: #DFF7EF;
+    --warn: #FFC857;
+    --warn-soft: #FFF3D6;
+    --danger-soft: #FFE1E6;
+    --border: #E7E1F7;
+    --radius-lg: 20px;
+    --radius-md: 14px;
+    --shadow: 0 6px 20px rgba(54, 43, 74, 0.08);
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  h1, h2, .display { font-family: 'Fredoka', 'Nunito', sans-serif; }
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+  #shell {
+    max-width: 480px;
+    margin: 0 auto;
+    min-height: 100vh;
+    padding: 20px 16px 96px;
+    position: relative;
+  }
+  .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom: 4px; }
+  .topbar .brand { font-family:'Fredoka'; font-weight:600; font-size:18px; color: var(--text); display:flex; align-items:center; gap:6px; }
+  .card {
+    background: var(--card);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .mascot-wrap { display:flex; align-items:center; gap:14px; }
+  .mascot-wrap svg { flex-shrink:0; }
+  .mascot-msg { flex:1; }
+  .mascot-msg .line1 { font-family:'Fredoka'; font-weight:600; font-size:17px; margin:0 0 2px; }
+  .mascot-msg .line2 { font-size:13px; color: var(--text-soft); margin:0; }
+  #mascot-bounce { transform-origin: center bottom; }
+  .bounce { animation: bounce 0.5s ease; }
+  @keyframes bounce {
+    0% { transform: translateY(0) scale(1); }
+    30% { transform: translateY(-8px) scale(1.05); }
+    60% { transform: translateY(0) scale(0.98); }
+    100% { transform: translateY(0) scale(1); }
+  }
+  .ring-row { display:flex; align-items:center; gap:16px; margin-top:14px; }
+  .ring { position:relative; width:64px; height:64px; flex-shrink:0; }
+  .ring svg { transform: rotate(-90deg); }
+  .ring-label { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Fredoka'; font-weight:600; font-size:14px; }
+  .ring-caption { font-size:13px; color: var(--text-soft); }
+  .ring-caption b { color: var(--text); }
+
+  .task-card {
+    display:flex; align-items:center; gap:12px;
+    background: var(--card);
+    border-radius: var(--radius-md);
+    padding: 12px 12px 12px 8px;
+    margin-bottom: 10px;
+    box-shadow: var(--shadow);
+    transition: background 0.25s ease;
+  }
+  .task-card.done { background: var(--success-soft); }
+  .checkbox-btn {
+    width: 36px; height:36px; flex-shrink:0;
+    border-radius: 11px;
+    border: 2.5px solid var(--border);
+    background: #fff;
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer;
+    transition: border-color 0.2s ease, background 0.2s ease, transform 0.15s ease;
+  }
+  .checkbox-btn.checked { border-color: var(--success); background: var(--success); }
+  .checkbox-btn:active { transform: scale(0.9); }
+  .checkbox-btn svg { width:18px; height:18px; }
+  .checkbox-btn .tick-path {
+    stroke: #fff; stroke-width: 3; fill:none; stroke-linecap:round; stroke-linejoin:round;
+    stroke-dasharray: 20; stroke-dashoffset: 20;
+    transition: stroke-dashoffset 0.25s ease 0.05s;
+  }
+  .checkbox-btn.checked .tick-path { stroke-dashoffset: 0; }
+  .task-name { flex:1; font-weight:700; font-size:15px; }
+  .task-card.done .task-name { color: var(--text-soft); text-decoration: line-through; text-decoration-color: var(--success); }
+  .task-remove {
+    border:none; background:none; color: var(--text-soft); opacity:0.5;
+    font-size:18px; line-height:1; cursor:pointer; padding:4px 6px;
+  }
+  .task-remove:hover { opacity:1; color: var(--accent-dark); }
+
+  .add-row { display:flex; gap:8px; margin-top: 4px; }
+  input[type="text"] {
+    flex:1; height:44px; border-radius: var(--radius-md);
+    border: 2px solid var(--border); padding: 0 14px; font-size:14px;
+    font-family:'Nunito'; background:#fff; color:var(--text);
+  }
+  input[type="text"]:focus { outline:none; border-color: var(--accent); }
+  .btn-primary {
+    height:44px; padding:0 18px; border-radius: var(--radius-md); border:none;
+    background: var(--accent); color:#fff; font-family:'Nunito'; font-weight:800; font-size:14px;
+    cursor:pointer; transition: transform 0.12s ease, background 0.15s ease;
+  }
+  .btn-primary:hover { background: var(--accent-dark); }
+  .btn-primary:active { transform: scale(0.96); }
+
+  .celebrate-banner {
+    background: linear-gradient(135deg, var(--accent), var(--flame));
+    color:#fff; border-radius: var(--radius-lg); padding: 14px 18px;
+    font-family:'Fredoka'; font-weight:600; font-size:15px; margin-bottom:14px;
+    display:flex; align-items:center; gap:10px;
+    animation: pop-in 0.4s ease;
+  }
+  @keyframes pop-in { 0% { transform: scale(0.85); opacity:0; } 100% { transform: scale(1); opacity:1; } }
+
+  /* Bottom nav */
+  #tabbar {
+    position: fixed; left:0; right:0; bottom:0;
+    max-width: 480px; margin: 0 auto;
+    background: #fff; border-top: 1px solid var(--border);
+    display:flex; padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+    box-shadow: 0 -4px 16px rgba(54,43,74,0.06);
+  }
+  .tab-btn {
+    flex:1; border:none; background:none; cursor:pointer;
+    display:flex; flex-direction:column; align-items:center; gap:2px;
+    padding: 8px 4px; border-radius: 12px; color: var(--text-soft);
+    font-family:'Nunito'; font-weight:700; font-size:11px;
+  }
+  .tab-btn .emoji { font-size:20px; }
+  .tab-btn.active { color: var(--accent-dark); background: var(--danger-soft); }
+
+  .view { display:none; }
+  .view.active { display:block; animation: fade-in 0.25s ease; }
+  @keyframes fade-in { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none; } }
+
+  /* Calendar grid */
+  .month-header {
+    background: var(--accent); color:#fff; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    padding: 12px 14px; display:flex; align-items:center; justify-content:space-between;
+    font-family:'Fredoka'; font-weight:600;
+  }
+  .month-header button { border:none; background:rgba(255,255,255,0.2); color:#fff; width:30px; height:30px; border-radius:9px; cursor:pointer; font-size:16px; }
+  .grid-wrap { background:#fff; border-radius: 0 0 var(--radius-lg) var(--radius-lg); overflow-x:auto; box-shadow: var(--shadow); margin-bottom:14px; }
+  table { border-collapse:collapse; font-size:12px; min-width:560px; width:100%; }
+  th, td { padding:6px 4px; }
+  th { background: var(--accent); color:#fff; font-weight:700; text-align:center; }
+  th.task-col, td.task-col { text-align:left; padding-left:10px; position:sticky; left:0; min-width:130px; background:#fff; }
+  th.task-col { background: var(--accent); }
+  .grid-check { display:flex; align-items:center; justify-content:center; }
+  .grid-check-icon { width:16px; height:16px; }
+  .grid-checkbox-btn { width:22px; height:22px; border-radius:6px; }
+  .grid-checkbox-btn svg { width:13px; height:13px; }
+
+  .stat-grid { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .stat-card { background:#fff; border-radius: var(--radius-md); padding:14px; box-shadow: var(--shadow); }
+  .stat-card .label { font-size:12px; color: var(--text-soft); font-weight:700; margin-bottom:4px; }
+  .stat-card .value { font-family:'Fredoka'; font-size:24px; font-weight:600; }
+  .bars-row { display:flex; align-items:flex-end; gap:6px; height:80px; margin-top:8px; }
+  .bar { flex:1; background: var(--border); border-radius:4px 4px 0 0; position:relative; display:flex; align-items:flex-end; }
+  .bar-fill { width:100%; border-radius:4px 4px 0 0; background: var(--success); transition: height 0.4s ease; }
+  .bar-label { position:absolute; bottom:-18px; left:0; right:0; text-align:center; font-size:9px; color: var(--text-soft); }
+
+  .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+  .confetti-piece { position:fixed; font-size:18px; pointer-events:none; z-index:999; animation: confetti-fall 0.9s ease-out forwards; }
+  @keyframes confetti-fall {
+    0% { transform: translate(0,0) rotate(0deg); opacity:1; }
+    100% { transform: translate(var(--dx), 90px) rotate(var(--rot)); opacity:0; }
+  }
+</style>
+</head>
+<body>
+<div id="shell">
+  <div class="topbar">
+    <span class="brand">✨ Bala's Daily Quest</span>
+    <button id="theme-btn" aria-label="Background settings" onclick="APP.toggleThemePanel()" style="border:none; background:rgba(0,0,0,0.06); width:34px; height:34px; border-radius:10px; cursor:pointer; font-size:16px;">🎨</button>
+  </div>
+
+  <div id="theme-panel" style="display:none; background:#fff; border-radius:16px; padding:14px; margin-bottom:14px; box-shadow:0 6px 20px rgba(54,43,74,0.08);"></div>
+
+  <div id="view-today" class="view active"></div>
+  <div id="view-calendar" class="view"></div>
+</div>
+
+<div id="tabbar">
+  <button class="tab-btn active" data-tab="today" onclick="APP.switchTab('today')"><span class="emoji">📋</span>Today</button>
+  <button class="tab-btn" data-tab="calendar" onclick="APP.switchTab('calendar')"><span class="emoji">📅</span>Calendar</button>
+</div>
+
+<script>
+(function(){
+const STORAGE_KEY = 'daily-task-tracker-data';
+const THEME_KEY = 'daily-task-tracker-theme';
+let state = { tasks: [], ticks: {}, viewMonth: null, tab: 'today', miniCalOpen: false };
+let theme = { mode: 'default', photo: null };
+let lastTodayPct = null;
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function dateStr(y,m,d){ return y+'-'+pad(m+1)+'-'+pad(d); }
+function today(){ const t=new Date(); return {y:t.getFullYear(), m:t.getMonth(), d:t.getDate()}; }
+function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+function tickKey(taskId, ds){ return taskId+'_'+ds; }
+function uid(){ return 't'+Math.random().toString(36).slice(2,9); }
+
+function load(){
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      state.tasks = parsed.tasks || [];
+      state.ticks = parsed.ticks || {};
+    }
+  } catch(e) { console.error('load failed', e); }
+  try {
+    const rawTheme = localStorage.getItem(THEME_KEY);
+    if (rawTheme) theme = JSON.parse(rawTheme);
+  } catch(e) { console.error('theme load failed', e); }
+  if (state.tasks.length === 0) {
+    state.tasks = [
+      { id: uid(), name: 'Morning walk' },
+      { id: uid(), name: 'Reply to pending mails' },
+      { id: uid(), name: 'Plan tomorrow' }
+    ];
+  }
+  const t = today();
+  state.viewMonth = { y: t.y, m: t.m };
+  applyTheme();
+  renderAll();
+  save();
+}
+function save(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks: state.tasks, ticks: state.ticks })); }
+  catch(e) { console.error('save failed', e); }
+}
+
+function saveTheme(){
+  try { localStorage.setItem(THEME_KEY, JSON.stringify(theme)); }
+  catch(e) { console.error('theme save failed', e); alert('Could not save that photo \u2014 it may be too large. Try a smaller image.'); }
+}
+
+function applyTheme(){
+  const body = document.body;
+  if (theme.mode === 'photo' && theme.photo) {
+    body.style.background = 'linear-gradient(rgba(241,238,251,0.82), rgba(241,238,251,0.82)), url(' + theme.photo + ')';
+    body.style.backgroundSize = 'cover';
+    body.style.backgroundPosition = 'center';
+    body.style.backgroundAttachment = 'fixed';
+  } else {
+    body.style.background = 'var(--bg)';
+  }
+}
+
+function setThemeMode(mode){
+  theme.mode = mode;
+  saveTheme();
+  applyTheme();
+  renderThemePanel();
+}
+
+function handlePhotoUpload(inputEl){
+  const file = inputEl.files && inputEl.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e){
+    const img = new Image();
+    img.onload = function(){
+      const maxDim = 1000;
+      let w = img.width, h = img.height;
+      if (w > h && w > maxDim) { h = Math.round(h * (maxDim/w)); w = maxDim; }
+      else if (h > maxDim) { w = Math.round(w * (maxDim/h)); h = maxDim; }
+      const canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      theme.photo = canvas.toDataURL('image/jpeg', 0.72);
+      theme.mode = 'photo';
+      saveTheme();
+      applyTheme();
+      renderThemePanel();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function toggleThemePanel(){
+  const panel = document.getElementById('theme-panel');
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (!isOpen) renderThemePanel();
+}
+
+function renderThemePanel(){
+  const panel = document.getElementById('theme-panel');
+  panel.innerHTML =
+    '<p style="font-family:\'Fredoka\'; font-weight:600; font-size:14px; margin:0 0 10px;">Background</p>'+
+    '<div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">'+
+      '<button onclick="APP.setThemeMode(\'default\')" style="height:60px; border-radius:12px; border:'+(theme.mode==='default'?'2px solid var(--accent)':'2px solid transparent')+'; background:var(--bg); cursor:pointer; font-size:11px; font-weight:700; color:var(--text-soft);">Default</button>'+
+      '<label style="height:60px; border-radius:12px; border:'+(theme.mode==='photo'?'2px solid var(--accent)':'2px dashed var(--border)')+'; background:'+(theme.mode==='photo' && theme.photo ? 'url('+theme.photo+') center/cover' : '#fafafa')+'; cursor:pointer; font-size:10px; font-weight:700; color:var(--text-soft); display:flex; align-items:center; justify-content:center; text-align:center; padding:4px;">'+
+        (theme.mode==='photo' && theme.photo ? '' : 'Your photo')+
+        '<input type="file" accept="image/*" onchange="APP.handlePhotoUpload(this)" style="display:none;">'+
+      '</label>'+
+    '</div>';
+}
+
+function switchTab(tab){
+  state.tab = tab;
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+tab).classList.add('active');
+  if (tab === 'calendar') renderCalendar();
+}
+
+function spawnConfetti(originEl){
+  const rect = originEl.getBoundingClientRect();
+  const emojis = ['🎉','✨','⭐','💫'];
+  for (let i=0;i<8;i++){
+    const s = document.createElement('span');
+    s.className = 'confetti-piece';
+    s.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+    s.style.left = (rect.left + rect.width/2) + 'px';
+    s.style.top = (rect.top + rect.height/2) + 'px';
+    const dx = (Math.random()-0.5) * 140;
+    const rot = (Math.random()-0.5) * 360;
+    s.style.setProperty('--dx', dx+'px');
+    s.style.setProperty('--rot', rot+'deg');
+    document.body.appendChild(s);
+    setTimeout(()=> s.remove(), 950);
+  }
+}
+
+function toggleTick(taskId, ds, btnEl){
+  const k = tickKey(taskId, ds);
+  const willCheck = !state.ticks[k];
+  state.ticks[k] = willCheck;
+  save();
+  if (willCheck && btnEl) spawnConfetti(btnEl);
+  renderAll();
+}
+
+function addTask(name){
+  if (!name.trim()) return;
+  state.tasks.push({ id: uid(), name: name.trim() });
+  save();
+  renderAll();
+}
+function removeTask(taskId){
+  state.tasks = state.tasks.filter(t => t.id !== taskId);
+  Object.keys(state.ticks).forEach(k => { if (k.startsWith(taskId+'_')) delete state.ticks[k]; });
+  save();
+  renderAll();
+}
+function submitAdd(){
+  const inp = document.getElementById('new-task-input');
+  if (inp && inp.value.trim()) { addTask(inp.value); inp.value=''; inp.focus(); }
+}
+function changeMonth(delta){
+  let { y, m } = state.viewMonth;
+  m += delta; if (m<0){m=11;y-=1;} if (m>11){m=0;y+=1;}
+  state.viewMonth = { y, m };
+  renderCalendar();
+}
+
+function computeStreak(){
+  if (state.tasks.length === 0) return 0;
+  let streak = 0; let cursor = new Date();
+  for (let i=0;i<3650;i++){
+    const ds = dateStr(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+    const allDone = state.tasks.every(t => state.ticks[tickKey(t.id, ds)]);
+    if (allDone) { streak++; cursor.setDate(cursor.getDate()-1); } else break;
+  }
+  return streak;
+}
+
+function tickIconSvg(){
+  return '<svg viewBox="0 0 24 24"><path class="tick-path" d="M5 12.5L10 17L19 7"/></svg>';
+}
+
+function mascotSvg(mood){
+  // mood: 'sleepy' | 'ok' | 'happy' | 'ecstatic'
+  let mouth, eyeType, extra = '';
+  if (mood === 'sleepy') { mouth = 'M28 44 Q36 40 44 44'; eyeType='closed'; }
+  else if (mood === 'ok') { mouth = 'M28 42 Q36 46 44 42'; eyeType='open'; }
+  else if (mood === 'happy') { mouth = 'M26 40 Q36 54 46 40'; eyeType='open'; }
+  else { mouth = 'M24 38 Q36 58 48 38'; eyeType='star'; extra = '<text x="36" y="14" text-anchor="middle" font-size="14">🎉</text>'; }
+  const eyes = eyeType === 'closed'
+    ? '<path d="M25 32 q4 -4 8 0" stroke="#362B4A" stroke-width="2.5" fill="none" stroke-linecap="round"/><path d="M39 32 q4 -4 8 0" stroke="#362B4A" stroke-width="2.5" fill="none" stroke-linecap="round"/>'
+    : '<circle cx="29" cy="32" r="3.2" fill="#362B4A"/><circle cx="43" cy="32" r="3.2" fill="#362B4A"/>';
+  return '<svg id="mascot-bounce" width="72" height="72" viewBox="0 0 72 72">'+
+    extra+
+    '<ellipse cx="36" cy="40" rx="30" ry="26" fill="#FFD166" stroke="#F2A93B" stroke-width="2"/>'+
+    '<ellipse cx="22" cy="42" rx="5" ry="3.5" fill="#FF9EB3" opacity="0.7"/>'+
+    '<ellipse cx="50" cy="42" rx="5" ry="3.5" fill="#FF9EB3" opacity="0.7"/>'+
+    eyes+
+    '<path d="'+mouth+'" stroke="#362B4A" stroke-width="2.5" fill="none" stroke-linecap="round"/>'+
+    '</svg>';
+}
+
+function ringSvg(pct, color){
+  const r = 26, c = 2*Math.PI*r;
+  const off = c - (pct/100)*c;
+  return '<svg width="64" height="64" viewBox="0 0 64 64">'+
+    '<circle cx="32" cy="32" r="'+r+'" fill="none" stroke="#EDEAF9" stroke-width="7"/>'+
+    '<circle cx="32" cy="32" r="'+r+'" fill="none" stroke="'+color+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+c+'" stroke-dashoffset="'+off+'" style="transition: stroke-dashoffset 0.5s ease;"/>'+
+    '</svg>';
+}
+
+function renderAll(){
+  renderToday();
+  if (state.tab === 'calendar') renderCalendar();
+}
+
+function renderToday(){
+  const t = today();
+  const ds = dateStr(t.y, t.m, t.d);
+  const total = state.tasks.length;
+  let done = 0;
+  state.tasks.forEach(task => { if (state.ticks[tickKey(task.id, ds)]) done++; });
+  const pct = total > 0 ? Math.round((done/total)*100) : 0;
+  const streak = computeStreak();
+
+  let mood = 'sleepy', line1 = "Let's get started!", line2 = 'Tick off your first task today.';
+  if (total === 0) { line1 = 'No tasks yet'; line2 = 'Add your first task below to begin.'; }
+  else if (pct === 100) { mood='ecstatic'; line1='Perfect day!'; line2 = 'Every task done. That\u2019s a '+streak+'-day streak!'; }
+  else if (pct >= 50) { mood='happy'; line1='Great progress!'; line2 = done+' of '+total+' tasks done \u2014 keep going.'; }
+  else if (pct > 0) { mood='ok'; line1='Nice start!'; line2 = done+' of '+total+' tasks done so far.'; }
+
+  const dateLabel = new Date(t.y,t.m,t.d).toLocaleDateString('default',{weekday:'long', month:'long', day:'numeric'});
+
+  const shouldBounce = lastTodayPct !== null && lastTodayPct !== pct;
+  lastTodayPct = pct;
+
+  let taskCards = '';
+  state.tasks.forEach(task => {
+    const checked = !!state.ticks[tickKey(task.id, ds)];
+    taskCards += '<div class="task-card '+(checked?'done':'')+'">'+
+      '<button class="checkbox-btn '+(checked?'checked':'')+'" aria-label="'+(checked?'Mark not done: ':'Mark done: ')+task.name+'" onclick="APP.toggleTick(\''+task.id+'\',\''+ds+'\', this)">'+tickIconSvg()+'</button>'+
+      '<span class="task-name">'+task.name+'</span>'+
+      '<button class="task-remove" aria-label="Remove '+task.name+'" onclick="APP.removeTask(\''+task.id+'\')">\u00d7</button>'+
+    '</div>';
+  });
+
+  const banner = pct === 100 && total > 0
+    ? '<div class="celebrate-banner">🎉 <span>All done for today \u2014 nice work!</span></div>'
+    : '';
+
+  document.getElementById('view-today').innerHTML =
+    '<h2 class="sr-only">Today\'s tasks for '+dateLabel+'</h2>'+
+    '<div class="card">'+
+      '<div class="mascot-wrap">'+
+        '<div class="'+(shouldBounce?'bounce':'')+'">'+mascotSvg(mood)+'</div>'+
+        '<div class="mascot-msg"><p class="line1">'+line1+'</p><p class="line2">'+line2+'</p></div>'+
+      '</div>'+
+      '<div class="ring-row">'+
+        '<div class="ring">'+ringSvg(pct, pct===100?'#06C08A':'#FF6F91')+'<span class="ring-label">'+pct+'%</span></div>'+
+        '<div class="ring-caption"><b>'+dateLabel+'</b><br>'+done+' of '+total+' tasks \u00b7 \ud83d\udd25 '+streak+'-day streak</div>'+
+      '</div>'+
+    '</div>'+
+    banner+
+    taskCards+
+    '<div class="add-row">'+
+      '<input id="new-task-input" type="text" placeholder="Add a task..." onkeydown="if(event.key===\'Enter\')APP.submitAdd();">'+
+      '<button class="btn-primary" onclick="APP.submitAdd()">+ Add</button>'+
+    '</div>';
+}
+
+function renderCalendar(){
+  const { y, m } = state.viewMonth;
+  const nDays = daysInMonth(y,m);
+  const monthName = new Date(y,m,1).toLocaleString('default',{month:'long'});
+  const t = today();
+  const isCurrentMonth = (y===t.y && m===t.m);
+
+  let totalTicks = 0;
+  const possible = state.tasks.length * nDays;
+  let actualLoggedDays = 0;
+  const dayPct = [];
+  for (let d=1; d<=nDays; d++){
+    const ds = dateStr(y,m,d);
+    let c = 0;
+    state.tasks.forEach(task => { if (state.ticks[tickKey(task.id, ds)]) c++; });
+    totalTicks += c;
+    if (c > 0) actualLoggedDays++;
+    dayPct.push(state.tasks.length > 0 ? Math.round((c/state.tasks.length)*100) : 0);
+  }
+  const monthPct = possible > 0 ? Math.round((totalTicks/possible)*1000)/10 : 0;
+
+  let headerCells = '';
+  for (let d=1; d<=nDays; d++){
+    const isToday = isCurrentMonth && d===t.d;
+    headerCells += '<th style="'+(isToday?'text-decoration:underline;':'')+'">'+d+'</th>';
+  }
+  let rows = '';
+  state.tasks.forEach(task => {
+    let cells = '';
+    for (let d=1; d<=nDays; d++){
+      const ds = dateStr(y,m,d);
+      const checked = !!state.ticks[tickKey(task.id, ds)];
+      cells += '<td><div class="grid-check">'+
+        '<button class="checkbox-btn grid-checkbox-btn '+(checked?'checked':'')+'" aria-label="'+(checked?'Mark not done: ':'Mark done: ')+task.name+' on '+monthName+' '+d+'" onclick="APP.toggleTick(\''+task.id+'\',\''+ds+'\', this)">'+tickIconSvg()+'</button>'+
+        '</div></td>';
+    }
+    rows += '<tr><td class="task-col">'+task.name+'</td>'+cells+'</tr>';
+  });
+
+  let dayPctCells = '';
+  for (let d=1; d<=nDays; d++){
+    const pct = dayPct[d-1];
+    const bg = pct === 100 ? '#DFF7EF' : pct >= 50 ? '#FFF3D6' : pct > 0 ? '#FFE1E6' : 'transparent';
+    const fg = pct === 100 ? '#06895C' : pct >= 50 ? '#8D6E00' : pct > 0 ? '#A32D2D' : 'var(--text-soft)';
+    dayPctCells += '<td style="background:'+bg+'; color:'+fg+'; font-weight:800;">'+pct+'%</td>';
+  }
+
+  let miniCalHtml = '';
+  if (state.miniCalOpen) {
+    const startWeekday = new Date(y, m, 1).getDay();
+    const weekdayLabels = ['S','M','T','W','T','F','S'];
+    let dayLabels = '';
+    weekdayLabels.forEach(w => { dayLabels += '<span style="font-size:9px; color:var(--text-soft); text-align:center; font-weight:800;">'+w+'</span>'; });
+    let cells = '';
+    for (let i=0;i<startWeekday;i++){ cells += '<span></span>'; }
+    for (let d=1; d<=nDays; d++){
+      const pct = dayPct[d-1];
+      const logged = pct > 0;
+      const isToday = isCurrentMonth && d===t.d;
+      cells += '<div style="aspect-ratio:1; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:800; background:'+(logged?'#06C08A':'var(--bg)')+'; color:'+(logged?'#fff':'var(--text-soft)')+'; '+(isToday?'box-shadow: inset 0 0 0 2px var(--accent);':'')+'">'+d+'</div>';
+    }
+    miniCalHtml =
+      '<div class="card" style="margin-bottom:12px;">'+
+        '<div style="display:grid; grid-template-columns:repeat(7,1fr); gap:5px; margin-bottom:4px;">'+dayLabels+'</div>'+
+        '<div style="display:grid; grid-template-columns:repeat(7,1fr); gap:5px;">'+cells+'</div>'+
+        '<div style="display:flex; gap:14px; margin-top:10px;">'+
+          '<span style="display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-soft);"><span style="width:9px; height:9px; border-radius:3px; background:#06C08A; display:inline-block;"></span>logged</span>'+
+          '<span style="display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text-soft);"><span style="width:9px; height:9px; border-radius:3px; background:var(--bg); border:1px solid var(--border); display:inline-block;"></span>no data</span>'+
+        '</div>'+
+      '</div>';
+  }
+
+  document.getElementById('view-calendar').innerHTML =
+    '<h2 class="sr-only">Calendar view for '+monthName+' '+y+' with month completion and days logged</h2>'+
+    '<div class="stat-grid" style="margin-bottom:12px;">'+
+      '<div class="stat-card"><div class="label">\ud83c\udfaf MONTH COMPLETION</div><div class="value" style="color:var(--success);">'+monthPct+'%</div></div>'+
+      '<button onclick="APP.toggleMiniCal()" class="stat-card" style="text-align:left; border:none; cursor:pointer; font-family:\'Nunito\'; width:100%; background:#fff;">'+
+        '<div class="label">\ud83d\udcc5 DAYS LOGGED '+(state.miniCalOpen?'\u25b4':'\u25be')+'</div><div class="value">'+actualLoggedDays+' / '+nDays+'</div>'+
+      '</button>'+
+    '</div>'+
+    miniCalHtml+
+    '<div class="month-header">'+
+      '<button onclick="APP.changeMonth(-1)" aria-label="Previous month">\u2039</button>'+
+      '<span>'+monthName+' '+y+'</span>'+
+      '<button onclick="APP.changeMonth(1)" aria-label="Next month">\u203a</button>'+
+    '</div>'+
+    '<div class="grid-wrap"><table>'+
+      '<tr><th class="task-col">Task</th>'+headerCells+'</tr>'+
+      rows+
+      '<tr><td class="task-col" style="font-weight:800; color:var(--text-soft);">Day %</td>'+dayPctCells+'</tr>'+
+    '</table></div>';
+}
+
+function toggleMiniCal(){
+  state.miniCalOpen = !state.miniCalOpen;
+  renderCalendar();
+}
+
+window.APP = { switchTab, toggleTick, addTask, removeTask, submitAdd, changeMonth, toggleThemePanel, setThemeMode, handlePhotoUpload, toggleMiniCal };
+load();
+})();
+</script>
+</body>
+</html>
