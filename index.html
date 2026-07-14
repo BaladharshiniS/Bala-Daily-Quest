@@ -6,6 +6,9 @@
 <title>Bala's Daily Quest</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <style>
   :root {
     --bg: #F1EEFB;
@@ -45,6 +48,10 @@
   }
   .topbar { display:flex; align-items:center; justify-content:space-between; margin-bottom: 4px; }
   .topbar .brand { font-family:'Fredoka'; font-weight:600; font-size:18px; color: var(--text); display:flex; align-items:center; gap:6px; }
+  .sync-status { font-size:11px; color: var(--text-soft); display:flex; align-items:center; gap:4px; margin-bottom:10px; }
+  .sync-dot { width:8px; height:8px; border-radius:50%; background: var(--warn); flex-shrink:0; }
+  .sync-dot.online { background: var(--success); }
+  .sync-dot.error { background: var(--accent-dark); }
   .card {
     background: var(--card);
     border-radius: var(--radius-lg);
@@ -132,7 +139,6 @@
   }
   @keyframes pop-in { 0% { transform: scale(0.85); opacity:0; } 100% { transform: scale(1); opacity:1; } }
 
-  /* Bottom nav */
   #tabbar {
     position: fixed; left:0; right:0; bottom:0;
     max-width: 480px; margin: 0 auto;
@@ -153,7 +159,6 @@
   .view.active { display:block; animation: fade-in 0.25s ease; }
   @keyframes fade-in { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none; } }
 
-  /* Calendar grid */
   .month-header {
     background: var(--accent); color:#fff; border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding: 12px 14px; display:flex; align-items:center; justify-content:space-between;
@@ -175,10 +180,6 @@
   .stat-card { background:#fff; border-radius: var(--radius-md); padding:14px; box-shadow: var(--shadow); }
   .stat-card .label { font-size:12px; color: var(--text-soft); font-weight:700; margin-bottom:4px; }
   .stat-card .value { font-family:'Fredoka'; font-size:24px; font-weight:600; }
-  .bars-row { display:flex; align-items:flex-end; gap:6px; height:80px; margin-top:8px; }
-  .bar { flex:1; background: var(--border); border-radius:4px 4px 0 0; position:relative; display:flex; align-items:flex-end; }
-  .bar-fill { width:100%; border-radius:4px 4px 0 0; background: var(--success); transition: height 0.4s ease; }
-  .bar-label { position:absolute; bottom:-18px; left:0; right:0; text-align:center; font-size:9px; color: var(--text-soft); }
 
   .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
   .confetti-piece { position:fixed; font-size:18px; pointer-events:none; z-index:999; animation: confetti-fall 0.9s ease-out forwards; }
@@ -194,6 +195,7 @@
     <span class="brand">✨ Bala's Daily Quest</span>
     <button id="theme-btn" aria-label="Background settings" onclick="APP.toggleThemePanel()" style="border:none; background:rgba(0,0,0,0.06); width:34px; height:34px; border-radius:10px; cursor:pointer; font-size:16px;">🎨</button>
   </div>
+  <div class="sync-status"><span id="sync-dot" class="sync-dot"></span><span id="sync-text">Connecting…</span></div>
 
   <div id="theme-panel" style="display:none; background:#fff; border-radius:16px; padding:14px; margin-bottom:14px; box-shadow:0 6px 20px rgba(54,43,74,0.08);"></div>
 
@@ -208,11 +210,30 @@
 
 <script>
 (function(){
-const STORAGE_KEY = 'daily-task-tracker-data';
 const THEME_KEY = 'daily-task-tracker-theme';
+
+// ============================================================
+// FIREBASE CONFIG — paste your project's config here
+// (Firebase Console → Project settings → Your apps → Web app)
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyBcWBBQF-cltwrXodNGlmbWl064pFpZw-s",
+  authDomain: "bala-s-daily-quest.firebaseapp.com",
+  databaseURL: "https://bala-s-daily-quest-default-rtdb.firebaseio.com",
+  projectId: "bala-s-daily-quest",
+  storageBucket: "bala-s-daily-quest.firebasestorage.app",
+  messagingSenderId: "743779695043",
+  appId: "1:743779695043:web:a76fc851b27feaf3356576"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const dataRef = db.ref('dailyTracker');
+// ============================================================
+
 let state = { tasks: [], ticks: {}, viewMonth: null, tab: 'today', miniCalOpen: false };
 let theme = { mode: 'default', photo: null };
 let lastTodayPct = null;
+let firebaseReady = false;
 
 function pad(n){ return String(n).padStart(2,'0'); }
 function dateStr(y,m,d){ return y+'-'+pad(m+1)+'-'+pad(d); }
@@ -221,47 +242,74 @@ function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
 function tickKey(taskId, ds){ return taskId+'_'+ds; }
 function uid(){ return 't'+Math.random().toString(36).slice(2,9); }
 
+function defaultChecklist(){
+  return [
+    { id: uid(), name: 'Wake up early' },
+    { id: uid(), name: 'Daily schedule planner' },
+    { id: uid(), name: 'Meditation' },
+    { id: uid(), name: 'Exercise' },
+    { id: uid(), name: 'Drink 2-3L water' },
+    { id: uid(), name: 'Healthy eating / no junk food' },
+    { id: uid(), name: 'Studying' },
+    { id: uid(), name: 'Self development (app dev / coding)' },
+    { id: uid(), name: 'Office work' },
+    { id: uid(), name: 'Learn & execute something new (craft etc.)' },
+    { id: uid(), name: 'Book reading' },
+    { id: uid(), name: 'Limit screen time / social media' },
+    { id: uid(), name: 'Self care' },
+    { id: uid(), name: 'Gratitude / journaling' },
+    { id: uid(), name: 'Go to sleep on time' }
+  ];
+}
+
+function setSyncStatus(mode, text){
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('sync-text');
+  if (!dot || !label) return;
+  dot.className = 'sync-dot' + (mode === 'online' ? ' online' : mode === 'error' ? ' error' : '');
+  label.textContent = text;
+}
+
 function load(){
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      state.tasks = parsed.tasks || [];
-      state.ticks = parsed.ticks || {};
-    }
-  } catch(e) { console.error('load failed', e); }
   try {
     const rawTheme = localStorage.getItem(THEME_KEY);
     if (rawTheme) theme = JSON.parse(rawTheme);
   } catch(e) { console.error('theme load failed', e); }
-  if (state.tasks.length === 0) {
-    state.tasks = [
-      { id: uid(), name: 'Wake up early' },
-      { id: uid(), name: 'Daily schedule planner' },
-      { id: uid(), name: 'Meditation' },
-      { id: uid(), name: 'Exercise' },
-      { id: uid(), name: 'Drink 2-3L water' },
-      { id: uid(), name: 'Healthy eating / no junk food' },
-      { id: uid(), name: 'Studying' },
-      { id: uid(), name: 'Self development (app dev / coding)' },
-      { id: uid(), name: 'Office work' },
-      { id: uid(), name: 'Learn & execute something new (craft etc.)' },
-      { id: uid(), name: 'Book reading' },
-      { id: uid(), name: 'Limit screen time / social media' },
-      { id: uid(), name: 'Self care' },
-      { id: uid(), name: 'Gratitude / journaling' },
-      { id: uid(), name: 'Go to sleep on time' }
-    ];
-  }
+
   const t = today();
   state.viewMonth = { y: t.y, m: t.m };
   applyTheme();
-  renderAll();
-  save();
+  setSyncStatus('connecting', 'Connecting…');
+
+  // Real-time listener — fires on load AND whenever data changes
+  // on ANY device (laptop, phone, etc.)
+  dataRef.on('value', function(snapshot){
+    firebaseReady = true;
+    const val = snapshot.val();
+    if (val && val.tasks && val.tasks.length > 0) {
+      state.tasks = val.tasks || [];
+      state.ticks = val.ticks || {};
+    } else if (!val) {
+      state.tasks = defaultChecklist();
+      state.ticks = {};
+      dataRef.set({ tasks: state.tasks, ticks: state.ticks });
+    }
+    setSyncStatus('online', 'Synced');
+    renderAll();
+  }, function(error){
+    console.error('Firebase read failed', error);
+    setSyncStatus('error', 'Offline — check connection');
+  });
 }
+
 function save(){
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ tasks: state.tasks, ticks: state.ticks })); }
-  catch(e) { console.error('save failed', e); }
+  if (!firebaseReady) return;
+  dataRef.set({ tasks: state.tasks, ticks: state.ticks })
+    .then(function(){ setSyncStatus('online', 'Synced'); })
+    .catch(function(e){
+      console.error('save failed', e);
+      setSyncStatus('error', 'Save failed — check connection');
+    });
 }
 
 function saveTheme(){
@@ -407,7 +455,6 @@ function tickIconSvg(){
 }
 
 function mascotSvg(mood){
-  // mood: 'sleepy' | 'ok' | 'happy' | 'ecstatic'
   let mouth, eyeType, extra = '';
   if (mood === 'sleepy') { mouth = 'M28 44 Q36 40 44 44'; eyeType='closed'; }
   else if (mood === 'ok') { mouth = 'M28 42 Q36 46 44 42'; eyeType='open'; }
